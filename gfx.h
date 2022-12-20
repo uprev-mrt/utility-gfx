@@ -26,7 +26,14 @@ typedef struct{
       uint8_t g;
       uint8_t b;
       uint8_t alpha;
-    } m24bitdata ;
+    } mRGBAdata;
+
+        //structure for 24bit color data with optional alpha channel
+    struct{       
+      uint8_t r;
+      uint8_t g;
+      uint8_t b;
+    } mRGBdata;
 
     //structure for 16bit 565 data
     struct{
@@ -35,6 +42,10 @@ typedef struct{
       uint8_t b : 5;
     } m565data;
 
+    struct {
+      uint8_t on: 1;
+    } mMonoData;
+
     uint32_t raw; //raw 32bit value
   } mData;
 }gfx_color_t;
@@ -42,8 +53,8 @@ typedef struct{
 typedef enum{
   GFX_COLOR_MODE_MONO,           //Monochromatic color mode
   GFX_COLOR_MODE_565,            //16bit color mode using 565 format
-  GFX_COLOR_MODE_24bit,          //24 bit color mode 
-  GFX_COLOR_MODE_24bit_W_ALPHA  //24 bit color mode with alpha channel
+  GFX_COLOR_MODE_888,          //24 bit color mode 
+  GFX_COLOR_MODE_888A  //24 bit color mode with alpha channel
 }gfx_color_mode_e;
 
 
@@ -65,7 +76,7 @@ typedef struct{
  * @brief glyphs are monochromatic bitmaps representing a single character in a font 
  */
 typedef struct {                // Data stored PER GLYPH
-	int bitmapOffset;             // Pointer into GFXfont->bitmap
+	int mOffset;             // Pointer into GFXfont->bitmap
 	uint8_t  mWidth, mHeight;     // Bitmap dimensions in pixels
 	uint8_t  mXAdvance;           // Distance to advance cursor (x axis)
 	int8_t   mXOffset, mYOffset;  // Dist from cursor pos to UL corner
@@ -86,8 +97,10 @@ typedef struct gfx_struct{
   int mWidth;						            // width of buffer in pixels
   int mHeight;							        //height of buffer in pixels
   uint32_t mBufferSize;					    //size of buffer (in bytes)
+  uint8_t mPixelSize;               //pixel size in bits
   const GFXfont* mFont;       	    //font to use for printing
   f_gfx_write_pixel fWritePixel;    //pointer to write function
+  f_gfx_write fWriteBuffer;         //pointer to write buffer function
   gfx_color_mode_e mMode;           //Color mode of canvas
   void* mDevice;					          //void pointer to device for unbuffered implementation. Use null if not needed
   bool mBuffered;                   //Indicates if memory is buffered
@@ -148,7 +161,25 @@ mrt_status_t gfx_write_pixel(gfx_t* gfx, int x, int y, gfx_color_t val);
 mrt_status_t gfx_write_buffer(gfx_t* gfx, int x, int y, uint8_t* data, int len, bool wrap);
 
 /**
+  *@brief writes buffer to device using fWriteBuffer
+  *@param gfx ptr to gfx_t descriptor
+  *@return status of operation
+  */
+mrt_status_t gfx_refresh(gfx_t* gfx);
+
+/**
   *@brief Draws a bitmap to the buffer
+  *@param gfx ptr to gfx_t descriptor
+  *@param x x coord to begin drawing at
+  *@param y y coord to begin drawing at
+  *@param bmp bitmap to draw
+  *@param val pixel value on
+  *@return status of operation
+  */
+mrt_status_t gfx_draw_bmp(gfx_t* gfx, int x, int y,const GFXBmp* bmp, gfx_color_t val);
+
+/**
+  *@brief Draws a glyph
   *@param gfx ptr to gfx_t descriptor
   *@param x x coord to begin drawing at
   *@param y y coord to begin drawing at
