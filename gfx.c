@@ -5,9 +5,114 @@
   *@date 010/15/2022
   */
 
+
+/* Includes ------------------------------------------------------------------*/
 #include "gfx.h"
 #include "string.h"
 #include <stdlib.h>
+#include "gfx_colors.h"
+
+
+
+
+/* Private Macros ------------------------------------------------------------*/
+/* Private Variables ---------------------------------------------------------*/
+/* Private functions ---------------------------------------------------------*/
+
+mrt_status_t gfx_convert_color( gfx_color_t* color, gfx_color_mode_e target)
+{
+    static uint8_t r;
+    static uint8_t g; 
+    static uint8_t b; 
+    static uint8_t a; 
+    if(target == color->mMode)
+    {
+        return MRT_STATUS_OK;
+    }
+
+    a = 255;
+
+    switch(color->mMode)
+    {
+        case GFX_COLOR_MODE_MONO:
+            if(color->mData.mMonoData.on)
+            {
+                r= 255;
+                g= 255;
+                b = 255;
+            }
+            else 
+            {
+                r= 0;
+                g= 0;
+                b = 0;
+            }
+            break; 
+        case GFX_COLOR_MODE_565:
+            r = color->mData.m565data.r * 8;
+            g = color->mData.m565data.g * 8;
+            b = color->mData.m565data.b * 8;
+            break; 
+        case GFX_COLOR_MODE_888:
+            r = color->mData.mRGBdata.r;
+            g = color->mData.mRGBdata.g;
+            b = color->mData.mRGBdata.b;
+            break; 
+        case GFX_COLOR_MODE_A888:
+            r = color->mData.mARGBdata.r;
+            g = color->mData.mARGBdata.g;
+            b = color->mData.mARGBdata.b;
+            a = color->mData.mARGBdata.alpha;
+            break;
+        case GFX_COLOR_MODE_888A:
+            r = color->mData.mRGBAdata.r;
+            g = color->mData.mRGBAdata.g;
+            b = color->mData.mRGBAdata.b;
+            a = color->mData.mRGBAdata.alpha;
+            break;
+    }
+
+    color->mData.raw = 0; 
+    color->mMode = target;
+
+    switch(target)
+    {
+        case GFX_COLOR_MODE_MONO:
+            if( r | g| b)
+            {
+                color->mData.mMonoData.on = true; 
+            }
+            break; 
+        case GFX_COLOR_MODE_565:
+            color->mData.m565data.r = r >> 3;
+            color->mData.m565data.g = g >> 2;
+            color->mData.m565data.b = b >> 3;
+            break; 
+        case GFX_COLOR_MODE_888:
+            color->mData.mRGBdata.r = r;
+            color->mData.mRGBdata.g = g;
+            color->mData.mRGBdata.b = b;
+            break; 
+        case GFX_COLOR_MODE_A888:
+            color->mData.mARGBdata.r = r;
+            color->mData.mARGBdata.g = g;
+            color->mData.mARGBdata.b = b;
+            color->mData.mARGBdata.alpha = a;
+            break;
+        case GFX_COLOR_MODE_888A:
+            color->mData.mRGBAdata.r = r;
+            color->mData.mRGBAdata.g = g;
+            color->mData.mRGBAdata.b = b;
+            color->mData.mRGBAdata.alpha = a;
+            break;
+    }
+
+    return MRT_STATUS_OK;
+
+}
+
+
+/* Exported functions ------------------------------------------------------- */
 
 mrt_status_t gfx_init_buffered(gfx_t* gfx, int width, int height, gfx_color_mode_e mode)
 {
@@ -23,11 +128,13 @@ mrt_status_t gfx_init_buffered(gfx_t* gfx, int width, int height, gfx_color_mode
         case GFX_COLOR_MODE_888:          //24 bit color mode 
             gfx->mPixelSize = 24;
             break;
-        case GFX_COLOR_MODE_888A:          //24 bit color mode 
+        case GFX_COLOR_MODE_A888:          //24 bit color modes 
+        case GFX_COLOR_MODE_888A:          
             gfx->mPixelSize = 32;
             break;
     }
-
+    
+    gfx->mMode = mode;
     gfx->mBufferSize = ((width * height) * (gfx->mPixelSize)) / 8;
     gfx->mBuffer = (uint8_t*) malloc(gfx->mBufferSize);
     memset(gfx->mBuffer,0,gfx->mBufferSize);
@@ -56,17 +163,26 @@ mrt_status_t gfx_init_unbuffered(gfx_t* gfx, int width, int height, gfx_color_mo
         case GFX_COLOR_MODE_888:          //24 bit color mode 
             gfx->mPixelSize = 24;
             break;
-        case GFX_COLOR_MODE_888A:          //24 bit color mode 
+        case GFX_COLOR_MODE_888A:          //24 bit color modes 
+        case GFX_COLOR_MODE_A888:          
             gfx->mPixelSize = 32;
             break;
     }
 
+    gfx->mMode = mode;
     gfx->mBufferSize = ((width * height) * (gfx->mPixelSize)) / 8;
     gfx->mBuffer = NULL;
     gfx->mWidth = width;
     gfx->mHeight = height;
     gfx->mFont  = NULL;
-    gfx->fWritePixel = write_cb;
+    if(write_cb == NULL)
+    {
+        gfx->fWritePixel = &gfx_write_pixel; 
+    }
+    else 
+    {
+        gfx->fWritePixel = write_cb;
+    }
     gfx->fWriteBuffer = &gfx_write_buffer;
     gfx->mDevice  = dev;
     gfx->mBuffered = true;
@@ -96,7 +212,7 @@ mrt_status_t gfx_write_pixel(gfx_t* gfx, int x, int y, gfx_color_t val)
     if(( x < 0) || (x >= gfx->mWidth) || (y < 0) || (y>= gfx->mHeight))
     return MRT_STATUS_OK;
 
-    uint32_t cursor = (y * gfx->mWidth) + x;
+    uint32_t cursor = ((y * gfx->mWidth) + x) * (gfx->mPixelSize / 8);
     uint32_t byteOffset = (cursor  / 8);
     uint8_t mask = 0x80;
 
@@ -119,7 +235,7 @@ mrt_status_t gfx_write_pixel(gfx_t* gfx, int x, int y, gfx_color_t val)
     }
     else 
     {
-        memcpy(&gfx->mBuffer[byteOffset],&val.mData, (gfx->mPixelSize / 8));
+        memcpy(&gfx->mBuffer[cursor],&val.mData, (gfx->mPixelSize / 8));
     }
 
     return MRT_STATUS_OK;
@@ -144,6 +260,8 @@ mrt_status_t gfx_draw_bmp(gfx_t* gfx, int x, int y,const GFXBmp* bmp, gfx_color_
 
     if( gfx->mMode == GFX_COLOR_MODE_MONO)
     {
+
+        gfx_convert_color(&val, gfx->mMode); //Convert color to match canvas mode
         for(i=0; i < bmp->mHeight; i ++)
         {
             for(a=0; a < bmp->mWidth; a++)
@@ -169,6 +287,8 @@ mrt_status_t gfx_print(gfx_t* gfx, int x, int y, const char * text, gfx_color_t 
     //if a font has not been set, return error
   if(gfx->mFont == NULL)
     return MRT_STATUS_ERROR;
+
+  gfx_convert_color(&val, gfx->mMode); //Convert color to match canvas mode
 
   int xx =x;     //current position for writing
   int yy = y;
@@ -210,6 +330,7 @@ mrt_status_t gfx_print(gfx_t* gfx, int x, int y, const char * text, gfx_color_t 
 
 mrt_status_t gfx_draw_line(gfx_t* gfx, int x0, int y0, int x1, int y1, gfx_color_t val)
 {
+    gfx_convert_color(&val, gfx->mMode); //Convert color to match canvas mode
     int16_t steep = abs(y1 - y0) > abs(x1 - x0);
     int swap;
     if (steep) {
@@ -250,20 +371,30 @@ mrt_status_t gfx_draw_line(gfx_t* gfx, int x0, int y0, int x1, int y1, gfx_color
     return MRT_STATUS_OK;
 }
 
-mrt_status_t gfx_draw_rect(gfx_t* gfx, int x, int y, int w, int h, gfx_color_t val)
+mrt_status_t gfx_draw_rect(gfx_t* gfx, int x, int y, int w, int h, int stroke, bool fill, gfx_color_t val)
 {
-    for(int i=0; i < h; i++)
+    gfx_convert_color(&val, gfx->mMode); //Convert color to match canvas mode
+
+    if(fill)
     {
-        for(int a=0; a < w; a++)
+        for(int i=0; i < h; i++)
         {
-            gfx->fWritePixel(gfx,x+a, y+i, val);
+            for(int a=0; a < w; a++)
+            {
+                gfx->fWritePixel(gfx,x+a, y+i, val);
+            }
         }
+    }
+    else 
+    {
+        //TODO
     }
     return MRT_STATUS_OK;
 }
 
 mrt_status_t gfx_fill(gfx_t* gfx, gfx_color_t val)
 {
+    gfx_convert_color(&val, gfx->mMode); //Convert color to match canvas mode
     if(gfx->mBuffered)
     {
         //memset(gfx->mBuffer, val, gfx->mBufferSize);
@@ -272,5 +403,43 @@ mrt_status_t gfx_fill(gfx_t* gfx, gfx_color_t val)
     {
         //TODO
     }
+    return MRT_STATUS_OK;
+}
+
+mrt_status_t gfx_test_pattern(gfx_t* gfx)
+{
+
+    uint32_t bar_width = (gfx->mWidth / 7) + 1;
+    uint32_t bar_len = gfx->mHeight * 0.8;  
+    uint32_t x_cursor = 0; 
+    uint32_t y_cursor = 0;
+
+    gfx_color_t colors[] = {GFX_COLOR_WHITE, GFX_COLOR_YELLOW, GFX_COLOR_CYAN, GFX_COLOR_GREEN, GFX_COLOR_FUSIA, GFX_COLOR_RED, GFX_COLOR_BLUE};
+
+    for(int i=0; i < 7; i++)
+    {
+        gfx_draw_rect(gfx,x_cursor,y_cursor,bar_width,bar_len,1,true, colors[i]);
+        x_cursor+= bar_width;
+    }
+
+    y_cursor = bar_len;
+    bar_len = gfx->mHeight - bar_len; 
+    x_cursor = 0;
+
+    for(int i=0; i < 7; i++)
+    {
+        if(i %2 == 0)
+        {
+            gfx_draw_rect(gfx,x_cursor,y_cursor,bar_width,bar_len,1,true, GFX_COLOR_BLACK);
+        }
+        else 
+        {
+            gfx_draw_rect(gfx,x_cursor,y_cursor,bar_width,bar_len,1,true, colors[6-i]);
+        }
+        
+        x_cursor+= bar_width;
+    }
+
+
     return MRT_STATUS_OK;
 }
