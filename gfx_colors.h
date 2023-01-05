@@ -18,6 +18,6 @@
 #define GFX_COLOR_GREEN         GFX_COLOR_RGB(0,0xFF,0) 
 #define GFX_COLOR_BLUE          GFX_COLOR_RGB(0,0,0xFF) 
 #define GFX_COLOR_YELLOW        GFX_COLOR_RGB(0xFF,0xFF,0xEB) 
-#define GFX_COLOR_CYAN          GFX_COLOR_RGB(0,0xB7,0xEB)
+#define GFX_COLOR_CYAN          GFX_COLOR_RGB(0,0xFF,0xFF)
 #define GFX_COLOR_FUSIA         GFX_COLOR_RGB(0xFD,0x3F,0x92)
 

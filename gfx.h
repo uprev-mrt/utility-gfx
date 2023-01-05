@@ -15,6 +15,11 @@
 #define GFX_PIXEL_ON 1
 #define GFX_PIXEL_INVERT 2
 
+
+#define GFX_FLAG_NONE  0x00000000
+#define GFX_FLAG_HFLIP 0x00010000
+#define GFX_FLAG_VFLIP 0x00020000
+
 /* Exported types ------------------------------------------------------------*/
 
 struct gfx_struct;
@@ -26,6 +31,7 @@ typedef enum{
   GFX_COLOR_MODE_888A,          //24 bit color mode with alpha channel
   GFX_COLOR_MODE_A888          //24 bit color mode with alpha channel
 }gfx_color_mode_e;
+
 
 /**
  * @brief struct for pixel gfx_color a.k.a pixel value
@@ -73,7 +79,7 @@ typedef struct{
 
 
 
-typedef mrt_status_t (*f_gfx_write_pixel)(struct gfx_struct* gfx, int x, int y, gfx_color_t color);           
+typedef mrt_status_t (*f_gfx_write_pixel)(struct gfx_struct* gfx, int x, int y, gfx_color_t* color);           
 typedef mrt_status_t (*f_gfx_write)(struct gfx_struct* gfx, int x, int y, uint8_t* data, int len, bool wrap); //pointer to write function
 typedef mrt_status_t (*f_gfx_read)(struct gfx_struct* gfx, int x, int y, uint8_t* data, int len, bool wrap); //pointer to read function
 
@@ -107,6 +113,13 @@ typedef struct { // Data stored for FONT AS A WHOLE:
 	uint8_t   mYAdvance;      // Newline distance (y axis)
 } GFXfont;
 
+typedef struct {
+  uint16_t mX;
+  uint16_t mY;
+  uint16_t mWidth; 
+  uint16_t mHeight; 
+} gfx_rect_t;
+
 typedef struct gfx_struct{
   uint8_t* mBuffer;						      //buffer to store pixel data
   int mWidth;						            // width of buffer in pixels
@@ -118,7 +131,12 @@ typedef struct gfx_struct{
   f_gfx_write fWriteBuffer;         //pointer to write buffer function
   gfx_color_mode_e mMode;           //Color mode of canvas
   void* mDevice;					          //void pointer to device for unbuffered implementation. Use null if not needed
-  bool mBuffered;                   //Indicates if memory is buffered
+  bool mBuffered;                   //Indicates if memory is buffered 
+  struct{       
+      uint32_t mStroke;             //Stroke width for drawing functions
+      gfx_color_t mColor;           //Color for drawing functions
+    } mPen;
+  uint32_t mFlags;
 } gfx_t;
 
 #ifdef __cplusplus
@@ -158,6 +176,15 @@ mrt_status_t gfx_init_unbuffered(gfx_t* gfx, int width, int height, gfx_color_mo
 mrt_status_t gfx_deinit(gfx_t* gfx);
 
 /**
+ * @brief Sets pen stroke and color for primitives
+ * @param gfx ptr to gfx obj
+ * @param stroke pen width
+ * @param color pen color
+ * @return mrt_status_t 
+ */
+mrt_status_t gfx_set_pen(gfx_t* gfx, uint32_t stroke, gfx_color_t color);
+
+/**
   *@brief writes a single pixel on the canvas
   *@param gfx ptr to gfx object
   *@param x x coord to draw
@@ -165,7 +192,7 @@ mrt_status_t gfx_deinit(gfx_t* gfx);
   *@param val pixel value
   *@return status
   */
-mrt_status_t gfx_write_pixel(gfx_t* gfx, int x, int y, gfx_color_t val);
+mrt_status_t gfx_write_pixel(gfx_t* gfx, int x, int y, gfx_color_t* val);
 
 /**
   *@brief writes an array of bytes to the buffer
@@ -190,21 +217,18 @@ mrt_status_t gfx_refresh(gfx_t* gfx);
   *@param x x coord to begin drawing at
   *@param y y coord to begin drawing at
   *@param bmp bitmap to draw
-  *@param val pixel value on
   *@return status of operation
   */
-mrt_status_t gfx_draw_bmp(gfx_t* gfx, int x, int y,const GFXBmp* bmp, gfx_color_t val);
+mrt_status_t gfx_draw_bmp(gfx_t* gfx, int x, int y,const GFXBmp* bmp);
+
 
 /**
-  *@brief Draws a glyph
-  *@param gfx ptr to gfx_t descriptor
-  *@param x x coord to begin drawing at
-  *@param y y coord to begin drawing at
-  *@param bmp bitmap to draw
-  *@param val pixel value on
-  *@return status of operation
-  */
-mrt_status_t gfx_draw_bmp(gfx_t* gfx, int x, int y,const GFXBmp* bmp, gfx_color_t val);
+ * @brief gets the size of a string based on current font
+ * @param text 
+ * @return uint32_t 
+ */
+gfx_rect_t gfx_get_print_size(gfx_t* gfx, const char* text);
+
 
 /**
   *@brief Draws rendered text to the buffer
@@ -215,7 +239,7 @@ mrt_status_t gfx_draw_bmp(gfx_t* gfx, int x, int y,const GFXBmp* bmp, gfx_color_
   *@param val pixel value
   *@return status of operation
   */
-mrt_status_t gfx_print(gfx_t* gfx, int x, int y, const char * text, gfx_color_t val);
+mrt_status_t gfx_print(gfx_t* gfx, int x, int y, const char * text);
 
 /**
   *@brief draws a rectangle
@@ -224,10 +248,9 @@ mrt_status_t gfx_print(gfx_t* gfx, int x, int y, const char * text, gfx_color_t 
   *@param y0 y coord of p1
 	*@param x1 x coord of p2
   *@param y1 y coord of p2
-  *@param val pixel value
   *@return "Return of the function"
   */
-mrt_status_t gfx_draw_line(gfx_t* gfx, int x0, int y0, int x1, int y1, gfx_color_t val);
+mrt_status_t gfx_draw_line(gfx_t* gfx, int x0, int y0, int x1, int y1);
 
 /**
   *@brief draws a rectangle
@@ -236,17 +259,26 @@ mrt_status_t gfx_draw_line(gfx_t* gfx, int x0, int y0, int x1, int y1, gfx_color
   *@param y y coord to begin drawing at
 	*@param w width
   *@param h height
-  *@param stroke pen thickness
   *@param fill fill in rectangle
-  *@param val pixel value
   *@return "Return of the function"
   */
-mrt_status_t gfx_draw_rect(gfx_t* gfx, int x, int y, int w, int h, int stroke, bool fill, gfx_color_t val);
+mrt_status_t gfx_draw_rect(gfx_t* gfx, int x, int y, int w, int h, bool fill);
 
 /**
-  *@brief fill buffer with value
+  *@brief draws a circle
+  *@param gfx ptr to gfx canvas
+	*@param x x for center point
+  *@param y y for center point
+	*@param r radius
+  *@param fill fill in circle
+  *@return "Return of the function"
+  */
+mrt_status_t gfx_draw_circle(gfx_t* gfx, int x, int y, int r, bool fill);
+
+/**
+  *@brief fill buffer with pen color
   *@param gfx ptr to gfxice
-  *@param val value to write
+  *@param val color to fill
   *@return status of operation
   */
 mrt_status_t gfx_fill(gfx_t* gfx, gfx_color_t val);
