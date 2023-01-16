@@ -20,6 +20,9 @@
 #define GFX_FLAG_HFLIP 0x00010000
 #define GFX_FLAG_VFLIP 0x00020000
 
+#define GFX_OPT_FILL 0x000000001 //Fill in primitive shape 
+#define GFX_OPT_WRAP 0x000000002 // Wrap text
+
 /* Exported types ------------------------------------------------------------*/
 
 struct gfx_struct;
@@ -199,10 +202,10 @@ mrt_status_t gfx_write_pixel(gfx_t* gfx, int x, int y, gfx_color_t* val);
   *@param gfx ptr to gfx_t descriptor
   *@param data ptr to black data being written
   *@param len number of bytes being written
-  *@param wrap whether or not to wrap when we reach the end of current row
+  *@param opts option flags
   *@return status of operation
   */
-mrt_status_t gfx_write_buffer(gfx_t* gfx, int x, int y, uint8_t* data, int len, bool wrap);
+mrt_status_t gfx_write_buffer(gfx_t* gfx, int x, int y, uint8_t* data, int len, uint32_t opt);
 
 /**
   *@brief writes buffer to device using fWriteBuffer
@@ -259,10 +262,10 @@ mrt_status_t gfx_draw_line(gfx_t* gfx, int x0, int y0, int x1, int y1);
   *@param y y coord to begin drawing at
 	*@param w width
   *@param h height
-  *@param fill fill in rectangle
+  *@param opt option flags (FILL)
   *@return "Return of the function"
   */
-mrt_status_t gfx_draw_rect(gfx_t* gfx, int x, int y, int w, int h, bool fill);
+mrt_status_t gfx_draw_rect(gfx_t* gfx, int x, int y, int w, int h, uint32_t opt);
 
 /**
   *@brief draws a circle
@@ -270,10 +273,10 @@ mrt_status_t gfx_draw_rect(gfx_t* gfx, int x, int y, int w, int h, bool fill);
 	*@param x x for center point
   *@param y y for center point
 	*@param r radius
-  *@param fill fill in circle
+  *@param opt option flags (FILL)
   *@return "Return of the function"
   */
-mrt_status_t gfx_draw_circle(gfx_t* gfx, int x, int y, int r, bool fill);
+mrt_status_t gfx_draw_circle(gfx_t* gfx, int x, int y, int r, uint32_t opt);
 
 /**
   *@brief fill buffer with pen color

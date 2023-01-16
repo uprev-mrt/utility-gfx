@@ -271,7 +271,7 @@ mrt_status_t gfx_write_pixel(gfx_t* gfx, int x, int y, gfx_color_t* val)
     return MRT_STATUS_OK;
 }
 
-mrt_status_t gfx_write_buffer(gfx_t* gfx, int x, int y, uint8_t* data, int len, bool wrap)
+mrt_status_t gfx_write_buffer(gfx_t* gfx, int x, int y, uint8_t* data, int len, uint32_t opt)
 {
     return MRT_STATUS_NOT_IMPLEMENTED;
 }
@@ -453,10 +453,10 @@ mrt_status_t gfx_draw_line(gfx_t* gfx, int x0, int y0, int x1, int y1)
     return MRT_STATUS_OK;
 }
 
-mrt_status_t gfx_draw_rect(gfx_t* gfx, int x, int y, int w, int h, bool fill)
+mrt_status_t gfx_draw_rect(gfx_t* gfx, int x, int y, int w, int h, uint32_t opt)
 {
 
-    if(fill)
+    if(opt & GFX_OPT_FILL)
     {
         for(int i=0; i < h; i++)
         {
@@ -473,7 +473,7 @@ mrt_status_t gfx_draw_rect(gfx_t* gfx, int x, int y, int w, int h, bool fill)
     return MRT_STATUS_OK;
 }
 
-mrt_status_t gfx_draw_circle(gfx_t* gfx, int x, int y, int r, bool fill)
+mrt_status_t gfx_draw_circle(gfx_t* gfx, int x, int y, int r, uint32_t opt)
 {
 
     //TODO
