@@ -20,6 +20,7 @@
 #define GFX_FLAG_HFLIP 0x00010000
 #define GFX_FLAG_VFLIP 0x00020000
 
+#define GFX_OPT_NONE  0x00000000
 #define GFX_OPT_FILL 0x000000001 //Fill in primitive shape 
 #define GFX_OPT_WRAP 0x000000002 // Wrap text
 
@@ -230,7 +231,7 @@ mrt_status_t gfx_draw_bmp(gfx_t* gfx, int x, int y,const GFXBmp* bmp);
  * @param text 
  * @return uint32_t 
  */
-gfx_rect_t gfx_get_print_size(gfx_t* gfx, const char* text);
+gfx_rect_t gfx_get_print_size(gfx_t* gfx, const char* text, uint32_t opt);
 
 
 /**
@@ -242,7 +243,7 @@ gfx_rect_t gfx_get_print_size(gfx_t* gfx, const char* text);
   *@param val pixel value
   *@return status of operation
   */
-mrt_status_t gfx_print(gfx_t* gfx, int x, int y, const char * text);
+mrt_status_t gfx_print(gfx_t* gfx, int x, int y, const char * text, uint32_t opt);
 
 /**
   *@brief draws a rectangle

@@ -311,7 +311,7 @@ mrt_status_t gfx_draw_bmp(gfx_t* gfx, int x, int y,const GFXBmp* bmp)
     return MRT_STATUS_OK;
 }
 
-gfx_rect_t gfx_get_print_size(gfx_t* gfx, const char* text)
+gfx_rect_t gfx_get_print_size(gfx_t* gfx, const char* text, uint32_t opt)
 {
 
     gfx_rect_t ret; 
@@ -365,7 +365,7 @@ gfx_rect_t gfx_get_print_size(gfx_t* gfx, const char* text)
 }
 
 
-mrt_status_t gfx_print(gfx_t* gfx, int x, int y, const char * text)
+mrt_status_t gfx_print(gfx_t* gfx, int x, int y, const char * text, uint32_t opt)
 {
     //if a font has not been set, return error
   if(gfx->mFont == NULL)
@@ -397,6 +397,15 @@ mrt_status_t gfx_print(gfx_t* gfx, int x, int y, const char * text)
       bmp.mWidth = glyph->mWidth ;
       bmp.mHeight = glyph->mHeight ;
       bmp.mMode = GFX_COLOR_MODE_MONO; //Font glyphs are all stored as monochromatic bitmaps
+
+			//If glyph would overrun and wrap is enabled, move to next line
+			//TODO update this to find word bounds instead of character
+      if((opt & GFX_OPT_WRAP) && ( xx+glyph->mXOffset+ glyph->mXAdvance > gfx->mWidth))
+      {
+				//if character is newline, we advance the y, and reset x
+				yy+= gfx->mFont->mYAdvance;
+				xx = x;
+      }
 
       //draw the character
       gfx_draw_bmp(gfx, xx+glyph->mXOffset , yy+ glyph->mYOffset , &bmp );
@@ -550,14 +559,14 @@ mrt_status_t gfx_test_pattern(gfx_t* gfx)
     //Write 
     if(gfx->mFont != NULL)
     {
-        gfx_rect_t bound = gfx_get_print_size(gfx, "Test");
+        gfx_rect_t bound = gfx_get_print_size(gfx, "Test" , GFX_OPT_NONE);
         gfx_set_pen(gfx, 1, GFX_COLOR_BLACK); 
         bound.mX = (gfx->mWidth - bound.mWidth) / 2;
         bound.mY = (gfx->mHeight - bound.mHeight) / 2; 
 
         //gfx_draw_rect(gfx,bound.mX, bound.mY, bound.mWidth, bound.mHeight, true);
         gfx_set_pen(gfx,1,GFX_COLOR_WHITE); 
-        gfx_print(gfx, bound.mX, bound.mY, "Test");
+        gfx_print(gfx, bound.mX, bound.mY, "Test", GFX_OPT_NONE);
     }
 
 
